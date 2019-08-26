@@ -5,8 +5,34 @@
 #include <linux/types.h>
 #include <linux/netfilter.h>		/* for NF_ACCEPT */
 #include <errno.h>
-
 #include <libnetfilter_queue/libnetfilter_queue.h>
+
+char *target;
+
+struct ip_hdr
+{
+    u_int ip_v;
+    u_int ip_hl;
+    u_int ip_tos;
+    u_int ip_tpl;
+    u_int ip_fi;
+    u_int ip_ff;
+    u_int ip_fo;
+
+};
+
+struct tcp_hdr
+{
+    u_int tcp_sport;
+    u_int tcp_dport;
+    u_int tcp_seq;
+    u_int tcp_ack;
+    u_int tcp_offset;
+    u_int tcp_flag;
+    u_int tcp_win;
+    u_int tcp_check;
+    u_int tcp_urg;
+};
 
 void dump(unsigned char* buf, int size) {
     int i;
@@ -75,11 +101,40 @@ static u_int32_t print_pkt (struct nfq_data *tb)
 }
 
 
-static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
-          struct nfq_data *nfa, void *data)
+static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data)
 {
-    u_int32_t id = print_pkt(nfa);
+    u_int32_t id, len, ip_len, tcp_len;
+    u_int port;
+    u_char *pkt, *http;
+    struct ip_hdr *ip;
+    struct tcp_hdr *tcp;
+    struct nfqnl_msg_packet_hdr *nmph;
     printf("entering callback\n");
+
+    nmph = nfq_get_msg_packet_hdr(nfa);
+    if(nmph)
+    {
+        id = notohl(nmph->packet_id);
+    }
+    len = nfq_get_payload(nfa, &pkt);
+    ip = (struct ip_hdr *)pkt;
+    ip_len = ((ip->ip_v) & 0x0f)*4;
+    tcp = (struct tcp_hdr *)(pkt + ip_len);
+    tcp_len = (((tcp)->tcp_offset & 0xf0)>>4)*4;
+    port = ntohs(tcp->tcp_dport);
+
+    if(port == 80)
+    {
+        http = (pkt + ip_len + tcp_len);
+        if(!memcmp(http, "GET", 3) || !memcmp(http, "POST", 4))
+        {
+            int ret = nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+            if(ret<0)
+            {
+                return -1;
+            }
+        }
+    }
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 }
 
