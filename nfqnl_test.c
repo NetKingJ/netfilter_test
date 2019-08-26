@@ -65,8 +65,10 @@ static u_int32_t print_pkt (struct nfq_data *tb)
 
     ret = nfq_get_payload(tb, &data);
     if (ret >= 0)
+    {
         printf("payload_len=%d ", ret);
-
+        dump(data, ret);
+    }
     fputc('\n', stdout);
 
     return id;
@@ -89,6 +91,17 @@ int main(int argc, char **argv)
     int fd;
     int rv;
     char buf[4096] __attribute__ ((aligned));
+
+    system("iptables -F");
+    system("iptables -A OUTPUT -j NFQUEUE --queue-num 0");
+    system("iptables -A INPUT -j NFQUEUE --queue-num 0");
+
+//    if(argc!=2)
+//    {
+//        printf("syntax : netfilter_test <host>\n");
+//        printf("sample : netfilter_test test.gilgil.net\n");
+//        return -1;
+//    }
 
     printf("opening library handle\n");
     h = nfq_open();
@@ -130,13 +143,6 @@ int main(int argc, char **argv)
             nfq_handle_packet(h, buf, rv);
             continue;
         }
-        /* if your application is too slow to digest the packets that
-         * are sent from kernel-space, the socket buffer that we use
-         * to enqueue packets may fill up returning ENOBUFS. Depending
-         * on your application, this error may be ignored. nfq_nlmsg_verdict_putPlease, see
-         * the doxygen documentation of this library on how to improve
-         * this situation.
-         */
         if (rv < 0 && errno == ENOBUFS) {
             printf("losing packets!\n");
             continue;
