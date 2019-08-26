@@ -151,12 +151,12 @@ int main(int argc, char **argv)
     system("iptables -A OUTPUT -j NFQUEUE --queue-num 0");
     system("iptables -A INPUT -j NFQUEUE --queue-num 0");
 
-//    if(argc!=2)
-//    {
-//        printf("syntax : netfilter_test <host>\n");
-//        printf("sample : netfilter_test test.gilgil.net\n");
-//        return -1;
-//    }
+    if(argc!=2)
+    {
+        printf("syntax : netfilter_test <host>\n");
+        printf("sample : netfilter_test test.gilgil.net\n");
+        return -1;
+    }
 
     printf("opening library handle\n");
     h = nfq_open();
