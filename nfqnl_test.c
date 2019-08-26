@@ -133,6 +133,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *
             {
                 return -1;
             }
+            return ret;
         }
     }
     return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
